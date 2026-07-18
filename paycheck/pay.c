@@ -334,7 +334,7 @@ int main(int argc, char *argv[])
 
     // Confirm that enough input values were provided to calculate a pay check
     if (!valid_input_values(&state)) {
-        printf("Use --help for options");
+        printf("Use --help for options\n");
         return 1;
     }
 
