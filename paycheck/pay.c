@@ -5,7 +5,16 @@
 #include <errno.h>
 
 
-enum Mode { RATE, HOURS, DT_HOURS, TAXES, NONE };
+enum Mode { 
+    RATE, 
+    HOURS, 
+    DT_HOURS, 
+    TAXES, 
+    WEEKS, 
+    NONE 
+};
+
+
 struct AppState {
     
     // Pay rates
@@ -17,6 +26,7 @@ struct AppState {
     double hours;
     double otHours;
     double dtHours;
+    double weeks;
     
     // Sums
     double regPay;
@@ -51,6 +61,7 @@ struct AppState default_state() {
     state.dtHours = 0.0;
     state.dtPay = 0.0; 
     state.net = 0.0;
+    state.weeks = 1.0;
     state.gross = 0.0;
     state.json = 0;
 
@@ -89,6 +100,11 @@ int set_op(char* modeStr, struct AppState* payStruct) {
         status = 1;
     }
 
+    else if (strcmp(modeStr, "-w") == 0) {
+        payStruct->opMode = WEEKS;
+        status = 1;
+    }
+
     return status;
 }
 
@@ -121,6 +137,10 @@ void set_val(double value, struct AppState* payCheck) {
         payCheck->taxRate = value;
     }
 
+    else if (payCheck->opMode == WEEKS) {
+        payCheck->weeks = value;
+    }
+
 }
 
 
@@ -134,11 +154,11 @@ void calculate_state(struct AppState* payCheck) {
     double pay = payCheck->hours * r;
     payCheck->regPay = pay;
 
-    double net = pay + dt + ot;
-    double taxes = net * payCheck->taxRate;
+    double gross = (pay + dt + ot) * payCheck->weeks;
+    double taxes = gross * payCheck->taxRate;
 
-    payCheck->gross = net;
-    payCheck->net = net - taxes;
+    payCheck->gross = gross;
+    payCheck->net = gross - taxes;
 
 }
 
@@ -215,6 +235,7 @@ void format_json(struct AppState* appState) {
         "\"dtPay\": %.2f,"
         "\"gross\": %.2f,"
         "\"net\": %.2f,"
+        "\"weeks\": %d"
         "\"taxPercent\": %.2f}",
         appState->rate,
         appState->hours,
@@ -227,6 +248,7 @@ void format_json(struct AppState* appState) {
         appState->dtPay,
         appState->gross,
         appState->net,
+        (int) appState->weeks,
         appState->taxRate * 100.0
 
     ); 
@@ -265,6 +287,11 @@ void show_state(struct AppState* appState) {
                 appState->dtPay);
     }
 
+    if ((int) appState->weeks >= 2) { 
+        printf("Weeks in pay period: %d\n",
+                (int) appState->weeks);
+    }
+
     if (appState->net >= 0.1) {
         printf("\nGross: %.2f\n", appState->gross);
         printf("Net: %.2f\n", appState->net);
@@ -287,6 +314,7 @@ const char* HELP_STR = "paycheck - Simple paycheck calculator\n"
 "    -d HOURS       Set double time hours (paid at 2x rate)\n"
 "    -t RATE        Set tax rate as decimal (e.g. 0.22 for 22%%)\n"
 "    -j             Data is output in json format\n"
+"    -w             Sets the number of weeks in a pay period"
 "\n"
 "EXAMPLES\n"
 "    paycheck -r 25.50 -h 45 -t 0.18\n"
